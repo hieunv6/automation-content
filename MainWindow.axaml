@@ -1,0 +1,1180 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AutomationContent.ViewModels"
+        xmlns:local="using:AutomationContent.Models"
+        x:Class="AutomationContent.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Automation Content"
+        Width="820" Height="850"
+        MinWidth="700" MinHeight="650"
+        WindowStartupLocation="CenterScreen"
+        Background="#1a1a2e"
+        ExtendClientAreaToDecorationsHint="False"
+        DragDrop.AllowDrop="True">
+
+    <Window.Styles>
+        <!-- Global text style -->
+        <Style Selector="TextBlock">
+            <Setter Property="FontFamily" Value="Inter, San Francisco, Segoe UI, sans-serif" />
+            <Setter Property="Foreground" Value="#e0e0e0" />
+        </Style>
+
+        <!-- Primary button style -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#6c5ce7" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="24,12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#7d6ff0" />
+        </Style>
+        <Style Selector="Button.primary:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#5a4bd4" />
+        </Style>
+        <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3d3d5c" />
+            <Setter Property="Foreground" Value="#666" />
+        </Style>
+
+        <!-- Danger button style -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#e74c3c" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="24,12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#ff6b5b" />
+        </Style>
+
+        <!-- Success button style -->
+        <Style Selector="Button.success">
+            <Setter Property="Background" Value="#00b894" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="24,12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.success:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#00d4aa" />
+        </Style>
+
+        <!-- Secondary button style -->
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#2d2d4a" />
+            <Setter Property="Foreground" Value="#b0b0cc" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="20,12" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#3d3d5c" />
+        </Style>
+        <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3d3d5c" />
+            <Setter Property="BorderBrush" Value="#6c5ce7" />
+        </Style>
+
+        <!-- TextBox style -->
+        <Style Selector="TextBox.url-input">
+            <Setter Property="Background" Value="#16213e" />
+            <Setter Property="Foreground" Value="#e0e0e0" />
+            <Setter Property="BorderBrush" Value="#2d2d4a" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Watermark" Value="Paste YouTube URL here... (e.g. https://youtube.com/watch?v=...)" />
+        </Style>
+        <Style Selector="TextBox.url-input:focus">
+            <Setter Property="BorderBrush" Value="#6c5ce7" />
+        </Style>
+
+        <!-- ComboBox style -->
+        <Style Selector="ComboBox.quality-select">
+            <Setter Property="Background" Value="#16213e" />
+            <Setter Property="Foreground" Value="#e0e0e0" />
+            <Setter Property="BorderBrush" Value="#2d2d4a" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="MinWidth" Value="200" />
+        </Style>
+
+        <!-- Card panel style -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#16213e" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="BorderBrush" Value="#2d2d4a" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <!-- Progress bar style -->
+        <Style Selector="ProgressBar.download-progress">
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Foreground" Value="#6c5ce7" />
+            <Setter Property="Background" Value="#2d2d4a" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+
+        <!-- Label style -->
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="#8888aa" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+
+        <Style Selector="TextBlock.section-title">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Foreground" Value="#b0b0cc" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+
+        <!-- Transcript text style -->
+        <Style Selector="TextBox.transcript-box">
+            <Setter Property="Background" Value="#0f0f23" />
+            <Setter Property="Foreground" Value="#e0e0e0" />
+            <Setter Property="BorderBrush" Value="#2d2d4a" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="Inter, San Francisco, Segoe UI, sans-serif" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="AcceptsReturn" Value="True" />
+        </Style>
+
+        <!-- Drop zone style -->
+        <Style Selector="Border.drop-zone">
+            <Setter Property="Background" Value="#0f0f23" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="32" />
+            <Setter Property="BorderBrush" Value="#3d3d5c" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+
+    </Window.Styles>
+
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,32" Spacing="20">
+
+            <!-- Header -->
+            <StackPanel Margin="0,0,0,4">
+                <TextBlock Text="🎬 Automation Content"
+                           FontSize="28"
+                           FontWeight="Bold"
+                           Foreground="White" />
+                <TextBlock Text="Download YouTube videos with ease"
+                           FontSize="14"
+                           Foreground="#6c5ce7"
+                           Margin="0,4,0,0" />
+            </StackPanel>
+
+            <!-- URL Input Section -->
+            <Border Classes="card">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="section-title" Text="📋 Video URL" />
+                    <Grid ColumnDefinitions="*,Auto" >
+                        <TextBox Classes="url-input"
+                                 Grid.Column="0"
+                                 Text="{Binding VideoUrl, Mode=TwoWay}"
+                                 Margin="0,0,12,0"
+                                 Name="UrlTextBox" />
+                        <Button Grid.Column="1"
+                                Classes="primary"
+                                Content="🔍 Get Info"
+                                IsEnabled="{Binding CanGetInfo}"
+                                Click="OnGetInfoClick" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Loading Indicator -->
+            <Border Classes="card"
+                    IsVisible="{Binding IsLoadingInfo}">
+                <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <ProgressBar IsIndeterminate="True"
+                                 Height="4"
+                                 Foreground="#6c5ce7"
+                                 Background="#2d2d4a"
+                                 CornerRadius="2"
+                                 Width="300" />
+                    <TextBlock Text="Fetching video information..."
+                               HorizontalAlignment="Center"
+                               Foreground="#8888aa"
+                               FontSize="13" />
+                </StackPanel>
+            </Border>
+
+            <!-- Error Message -->
+            <Border Background="#2d1520"
+                    CornerRadius="12"
+                    Padding="18"
+                    BorderBrush="#e74c3c"
+                    BorderThickness="1"
+                    IsVisible="{Binding HasError}">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="❌ Error"
+                               FontWeight="Bold"
+                               Foreground="#e74c3c"
+                               FontSize="14" />
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="#ff9999"
+                               TextWrapping="Wrap"
+                               FontSize="13" />
+                </StackPanel>
+            </Border>
+
+            <!-- Video Info Card -->
+            <Border Classes="card"
+                    IsVisible="{Binding HasVideoInfo}">
+                <StackPanel Spacing="14">
+                    <TextBlock Classes="section-title" Text="📺 Video Preview" />
+                    <Grid ColumnDefinitions="Auto,*" >
+                        <!-- Thumbnail -->
+                        <Border Grid.Column="0"
+                                CornerRadius="10"
+                                ClipToBounds="True"
+                                Width="260"
+                                Height="146"
+                                Margin="0,0,18,0"
+                                Background="#0f0f23"
+                                IsVisible="{Binding HasThumbnail}">
+                            <Image Source="{Binding ThumbnailBitmap}"
+                                   Stretch="UniformToFill" />
+                        </Border>
+
+                        <!-- Video details -->
+                        <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding VideoTitle}"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       TextWrapping="Wrap"
+                                       MaxLines="2" />
+
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="👤" FontSize="13" />
+                                    <TextBlock Text="{Binding VideoChannel}"
+                                               FontSize="13"
+                                               Foreground="#8888aa" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <Border Background="#2d2d4a" CornerRadius="6" Padding="10,5">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="⏱" FontSize="12" />
+                                        <TextBlock Text="{Binding VideoDuration}"
+                                                   FontSize="12"
+                                                   Foreground="#b0b0cc" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#2d2d4a" CornerRadius="6" Padding="10,5">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="👁" FontSize="12" />
+                                        <TextBlock Text="{Binding VideoViews}"
+                                                   FontSize="12"
+                                                   Foreground="#b0b0cc" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Download Settings -->
+            <Border Classes="card"
+                    IsVisible="{Binding HasVideoInfo}">
+                <StackPanel Spacing="16">
+                    <TextBlock Classes="section-title" Text="⚙️ Download Settings" />
+
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" >
+                        <!-- Quality selection -->
+                        <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,10,0">
+                            <TextBlock Classes="label" Text="VIDEO QUALITY" />
+                            <ComboBox Classes="quality-select"
+                                      SelectedIndex="{Binding SelectedQualityIndex}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="1080p (Full HD)" />
+                                <ComboBoxItem Content="720p (HD)" />
+                                <ComboBoxItem Content="480p (SD)" />
+                                <ComboBoxItem Content="🎵 Audio Only (MP3)" />
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Save folder -->
+                        <StackPanel Grid.Column="1" Grid.Row="0" Margin="10,0,0,0">
+                            <TextBlock Classes="label" Text="SAVE FOLDER" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding SaveFolder}"
+                                         IsReadOnly="True"
+                                         Background="#16213e"
+                                         Foreground="#b0b0cc"
+                                         BorderBrush="#2d2d4a"
+                                         BorderThickness="1.5"
+                                         CornerRadius="10"
+                                         Padding="12,10"
+                                         FontSize="12"
+                                         Margin="0,0,8,0" />
+                                <Button Grid.Column="1"
+                                        Classes="secondary"
+                                        Content="📁 Browse"
+                                        Click="OnBrowseFolderClick" />
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Download / Cancel buttons -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+                        <StackPanel Grid.Column="0" />
+                        <Button Grid.Column="1"
+                                Classes="danger"
+                                Content="✖ Cancel"
+                                IsVisible="{Binding CanCancel}"
+                                Click="OnCancelClick"
+                                Margin="0,0,12,0" />
+                        <Button Grid.Column="2"
+                                Classes="primary"
+                                Content="⬇️ Download"
+                                IsEnabled="{Binding CanDownload}"
+                                Click="OnDownloadClick"
+                                Padding="32,14"
+                                FontSize="15" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Progress Section -->
+            <Border Classes="card"
+                    IsVisible="{Binding IsDownloading}">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="section-title" Text="📥 Downloading..." />
+                    <ProgressBar Classes="download-progress"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="{Binding DownloadProgress}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding ProgressText}"
+                                   FontSize="13"
+                                   Foreground="#8888aa" />
+                        <TextBlock Grid.Column="1"
+                                   FontSize="13"
+                                   Foreground="#6c5ce7"
+                                   FontWeight="SemiBold">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0:F0}%">
+                                    <Binding Path="DownloadProgress" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Success Message -->
+            <Border Background="#152d1e"
+                    CornerRadius="12"
+                    Padding="18"
+                    BorderBrush="#00b894"
+                    BorderThickness="1"
+                    IsVisible="{Binding HasSuccess}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="✅ Download Complete!"
+                               FontWeight="Bold"
+                               Foreground="#00b894"
+                               FontSize="16" />
+                    <TextBlock Text="{Binding SuccessMessage}"
+                               Foreground="#99ffcc"
+                               TextWrapping="Wrap"
+                               FontSize="13" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Classes="success"
+                                Content="📂 Open Folder"
+                                Click="OnOpenFolderClick" />
+                        <Button Classes="primary"
+                                Content="🎙️ Transcribe this video"
+                                IsEnabled="{Binding CanTranscribe}"
+                                Click="OnTranscribeDownloadedClick" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!--  TRANSCRIPTION SECTION (Whisper.net — runs locally, no API key needed) -->
+            <!-- ═══════════════════════════════════════ -->
+
+            <!-- Transcription Drop Zone -->
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <TextBlock Classes="section-title" Text="🎙️ Transcribe Audio (Local — Whisper.net)" />
+
+                    <!-- Drop zone -->
+                    <Border Classes="drop-zone"
+                            Name="DropZone"
+                            IsVisible="{Binding !IsTranscribing}">
+                        <StackPanel HorizontalAlignment="Center" Spacing="8">
+                            <TextBlock Text="📁"
+                                       FontSize="32"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Drag and drop .mp4 or .mp3 file here to transcribe"
+                                       FontSize="14"
+                                       Foreground="#8888aa"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="or click to browse"
+                                       FontSize="12"
+                                       Foreground="#666688"
+                                       HorizontalAlignment="Center"
+                                       Cursor="Hand" />
+                            <Button Classes="secondary"
+                                    Content="📂 Browse file..."
+                                    Click="OnBrowseTranscribeFileClick"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Transcribing spinner -->
+                    <Border Background="#1a1535"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="#6c5ce7"
+                            BorderThickness="1"
+                            IsVisible="{Binding IsTranscribing}">
+                        <StackPanel HorizontalAlignment="Center" Spacing="14">
+                            <ProgressBar IsIndeterminate="True"
+                                         Height="4"
+                                         Foreground="#6c5ce7"
+                                         Background="#2d2d4a"
+                                         CornerRadius="2"
+                                         Width="300" />
+                            <TextBlock Text="🎙️ Đang nhận dạng giọng nói..."
+                                       HorizontalAlignment="Center"
+                                       Foreground="#b0b0cc"
+                                       FontSize="15"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="This may take a moment depending on the video length."
+                                       HorizontalAlignment="Center"
+                                       Foreground="#666688"
+                                       FontSize="12" />
+                            <Button Classes="danger"
+                                    Content="✖ Cancel"
+                                    Click="OnCancelTranscribeClick"
+                                    HorizontalAlignment="Center"
+                                    Padding="16,8" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Transcript Result -->
+                    <StackPanel IsVisible="{Binding HasTranscript}" Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="📝 Transcript"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="#b0b0cc" />
+                            <Border Grid.Column="1"
+                                    Background="#2d2d4a"
+                                    CornerRadius="6"
+                                    Padding="10,4">
+                                <TextBlock FontSize="11"
+                                           Foreground="#8888aa">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="Language: {0}">
+                                            <Binding Path="TranscriptLanguage" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+                        </Grid>
+
+                        <TextBox Classes="transcript-box"
+                                 Text="{Binding TranscriptText}"
+                                 MaxHeight="350"
+                                 Name="TranscriptTextBox" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Classes="primary"
+                                    Content="📋 Copy transcript"
+                                    Click="OnCopyTranscriptClick" />
+                            <Button Classes="secondary"
+                                    Content="💾 Save as .txt"
+                                    Click="OnSaveTranscriptClick" />
+                            <Button Classes="success"
+                                    Content="🎤 Tạo lồng tiếng"
+                                    Click="OnPrepareVoiceoverClick" />
+                            <Button Classes="primary"
+                                    Content="🖼️ Tạo ảnh minh họa"
+                                    Click="OnPrepareImageGenClick" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!--  AI VOICEOVER SECTION (Edge TTS — free) -->
+            <!-- ═══════════════════════════════════════ -->
+
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="section-title" Text="🎤 AI Lồng Tiếng (Edge TTS)" />
+                        <TextBlock Text="Tạo giọng nói tự nhiên từ text — miễn phí, không cần API key"
+                                   FontSize="12"
+                                   Foreground="#666688" />
+                    </StackPanel>
+
+                    <!-- Voiceover text editor + Translation -->
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding !IsGeneratingVoiceover}">
+                        <TextBlock Classes="label" Text="NỘI DUNG LỒI TIẾNG (có thể chỉnh sửa)" />
+                        <TextBox Classes="transcript-box"
+                                 Text="{Binding VoiceoverText, Mode=TwoWay}"
+                                 MaxHeight="250"
+                                 IsReadOnly="False"
+                                 Watermark="Nhập hoặc dán nội dung cần tạo giọng nói..."
+                                 Name="VoiceoverTextBox" />
+
+                        <!-- Language + Translate row -->
+                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Classes="label" Text="NGÔN NGỮ LỒI TIẾNG" />
+                                <ComboBox Classes="quality-select"
+                                          SelectedIndex="{Binding SelectedLanguageIndex}"
+                                          HorizontalAlignment="Stretch"
+                                          Name="LanguageComboBox">
+                                    <ComboBoxItem Content="🇻🇳 Tiếng Việt" />
+                                    <ComboBoxItem Content="🇺🇸 English (US)" />
+                                    <ComboBoxItem Content="🇬🇧 English (UK)" />
+                                    <ComboBoxItem Content="🇯🇵 日本語 (Japanese)" />
+                                    <ComboBoxItem Content="🇰🇷 한국어 (Korean)" />
+                                    <ComboBoxItem Content="🇨🇳 中文 (Chinese)" />
+                                    <ComboBoxItem Content="🇹🇭 ภาษาไทย (Thai)" />
+                                    <ComboBoxItem Content="🇫🇷 Français (French)" />
+                                    <ComboBoxItem Content="🇪🇸 Español (Spanish)" />
+                                    <ComboBoxItem Content="🇩🇪 Deutsch (German)" />
+                                    <ComboBoxItem Content="🇧🇷 Português (Brazilian)" />
+                                    <ComboBoxItem Content="🇮🇳 हिन्दी (Hindi)" />
+                                </ComboBox>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Classes="secondary"
+                                    Content="🌐 Dịch sang ngôn ngữ đã chọn"
+                                    IsEnabled="{Binding CanTranslate}"
+                                    Click="OnTranslateClick"
+                                    Margin="12,18,0,0"
+                                    Padding="18,10"
+                                    FontSize="13"
+                                    VerticalAlignment="Bottom" />
+                        </Grid>
+
+                        <!-- Translating indicator -->
+                        <Border Background="#1a2035"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                BorderBrush="#0984e3"
+                                BorderThickness="1"
+                                IsVisible="{Binding IsTranslating}">
+                            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                                <ProgressBar IsIndeterminate="True"
+                                             Height="3"
+                                             Foreground="#0984e3"
+                                             Background="#2d2d4a"
+                                             CornerRadius="1"
+                                             Width="120" />
+                                <TextBlock Text="🌐 Đang dịch..."
+                                           Foreground="#74b9ff"
+                                           FontSize="13" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Voice + Speed selection -->
+                        <Grid ColumnDefinitions="*,*" Margin="0,4,0,0">
+                            <!-- Voice dropdown (dynamic based on language) -->
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Classes="label" Text="GIỌNG ĐỌC" />
+                                <ComboBox Classes="quality-select"
+                                          ItemsSource="{Binding VoiceDisplayNames}"
+                                          SelectedIndex="{Binding SelectedVoiceIndex}"
+                                          HorizontalAlignment="Stretch" />
+                            </StackPanel>
+
+                            <!-- Speed dropdown -->
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Classes="label" Text="TỐC ĐỘ ĐỌC" />
+                                <ComboBox Classes="quality-select"
+                                          SelectedIndex="{Binding SelectedSpeedIndex}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="🐢 Chậm (−10%)" />
+                                    <ComboBoxItem Content="▶️ Bình thường" />
+                                    <ComboBoxItem Content="⚡ Nhanh (+20%)" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Generate button -->
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                            <StackPanel Grid.Column="0" />
+                            <Button Grid.Column="1"
+                                    Classes="primary"
+                                    Content="🎤 Tạo lồng tiếng"
+                                    IsEnabled="{Binding CanGenerateVoiceover}"
+                                    Click="OnGenerateVoiceoverClick"
+                                    Padding="32,14"
+                                    FontSize="15" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Generating spinner -->
+                    <Border Background="#1a1535"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="#6c5ce7"
+                            BorderThickness="1"
+                            IsVisible="{Binding IsGeneratingVoiceover}">
+                        <StackPanel HorizontalAlignment="Center" Spacing="14">
+                            <ProgressBar IsIndeterminate="True"
+                                         Height="4"
+                                         Foreground="#6c5ce7"
+                                         Background="#2d2d4a"
+                                         CornerRadius="2"
+                                         Width="300" />
+                            <TextBlock Text="{Binding VoiceoverProgressText}"
+                                       HorizontalAlignment="Center"
+                                       Foreground="#b0b0cc"
+                                       FontSize="15"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="Edge TTS cần kết nối internet để tạo giọng nói."
+                                       HorizontalAlignment="Center"
+                                       Foreground="#666688"
+                                       FontSize="12" />
+                            <Button Classes="danger"
+                                    Content="✖ Hủy"
+                                    Click="OnCancelVoiceoverClick"
+                                    HorizontalAlignment="Center"
+                                    Padding="16,8" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Voiceover Success + Audio Player -->
+                    <Border Background="#152d1e"
+                            CornerRadius="12"
+                            Padding="18"
+                            BorderBrush="#00b894"
+                            BorderThickness="1"
+                            IsVisible="{Binding HasVoiceoverSuccess}">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="{Binding VoiceoverSuccessMessage}"
+                                       FontWeight="Bold"
+                                       Foreground="#00b894"
+                                       FontSize="15" />
+
+                            <!-- Audio player controls -->
+                            <Border Background="#0f2818"
+                                    CornerRadius="10"
+                                    Padding="16,12">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Play/Stop button -->
+                                    <Button Grid.Column="0"
+                                            Classes="primary"
+                                            Content="▶️ Nghe thử"
+                                            Click="OnPlayVoiceoverClick"
+                                            IsVisible="{Binding !IsPlayingAudio}"
+                                            Padding="16,10"
+                                            FontSize="13" />
+                                    <Button Grid.Column="0"
+                                            Classes="danger"
+                                            Content="⏹ Dừng"
+                                            Click="OnStopVoiceoverClick"
+                                            IsVisible="{Binding IsPlayingAudio}"
+                                            Padding="16,10"
+                                            FontSize="13" />
+
+                                    <!-- Now playing indicator -->
+                                    <TextBlock Grid.Column="1"
+                                               Text="🔊 Đang phát..."
+                                               Foreground="#00b894"
+                                               FontSize="13"
+                                               VerticalAlignment="Center"
+                                               Margin="14,0,0,0"
+                                               IsVisible="{Binding IsPlayingAudio}" />
+
+                                    <!-- Open folder button -->
+                                    <Button Grid.Column="2"
+                                            Classes="secondary"
+                                            Content="📂 Mở thư mục"
+                                            Click="OnOpenVoiceoverFolderClick"
+                                            Padding="14,10"
+                                            FontSize="12" />
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="Nhấn Next để tạo video →"
+                                       Foreground="#99ffcc"
+                                       FontSize="13"
+                                       FontStyle="Italic"
+                                       HorizontalAlignment="Right" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!--  AI IMAGE GENERATION (Pollinations.AI — free) -->
+            <!-- ═══════════════════════════════════════ -->
+
+            <Border Classes="card"
+                    IsVisible="{Binding ShowImageSection}">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="section-title" Text="🖼️ AI Tạo Ảnh (Pollinations.AI)" />
+                        <TextBlock Text="Tạo ảnh minh họa từ transcript — hỗ trợ API key hoặc chế độ miễn phí"
+                                   FontSize="12"
+                                   Foreground="#666688" />
+                    </StackPanel>
+
+                    <!-- API Key input + status -->
+                    <Border Background="#0f0f23"
+                            CornerRadius="10"
+                            Padding="14,10"
+                            BorderBrush="#2d2d4a"
+                            BorderThickness="1">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Classes="label" Text="API KEY (TUỲ CHỌN)" />
+                                    <TextBox Text="{Binding PollinationsApiKey, Mode=TwoWay}"
+                                             Background="#16213e"
+                                             Foreground="#b0b0cc"
+                                             BorderBrush="#2d2d4a"
+                                             BorderThickness="1"
+                                             CornerRadius="8"
+                                             Padding="12,8"
+                                             FontSize="12"
+                                             PasswordChar="●"
+                                             RevealPassword="False"
+                                             Watermark="Dán API key tại đây (sk_... hoặc pk_...) hoặc để trống = miễn phí" />
+                                </StackPanel>
+                                <!-- Status badge -->
+                                <Border Grid.Column="1"
+                                        Background="#1a2035"
+                                        CornerRadius="8"
+                                        Padding="12,8"
+                                        Margin="12,18,0,0"
+                                        VerticalAlignment="Bottom">
+                                    <TextBlock Text="{Binding ApiKeyStatusText}"
+                                               FontSize="11"
+                                               Foreground="#8888aa" />
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="💡 Lấy API key miễn phí tại: https://enter.pollinations.ai — không bắt buộc, nhưng giảm rate limit"
+                                       FontSize="10"
+                                       Foreground="#555577"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Style selector + Generate button -->
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding !IsGeneratingImages}">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Classes="label" Text="PHONG CÁCH ẢNH" />
+                                <ComboBox Classes="quality-select"
+                                          SelectedIndex="{Binding SelectedImageStyleIndex}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="📷 Realistic photo" />
+                                    <ComboBoxItem Content="🎨 Digital art" />
+                                    <ComboBoxItem Content="📐 Flat design" />
+                                    <ComboBoxItem Content="🎬 Cinematic" />
+                                </ComboBox>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Classes="primary"
+                                    Content="🖼️ Tạo ảnh cho tất cả đoạn"
+                                    IsEnabled="{Binding CanGenerateImages}"
+                                    Click="OnGenerateAllImagesClick"
+                                    Padding="28,14"
+                                    FontSize="14"
+                                    Margin="12,18,0,0"
+                                    VerticalAlignment="Bottom" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Generating progress -->
+                    <Border Background="#1a1535"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="#6c5ce7"
+                            BorderThickness="1"
+                            IsVisible="{Binding IsGeneratingImages}">
+                        <StackPanel HorizontalAlignment="Center" Spacing="14">
+                            <ProgressBar IsIndeterminate="True"
+                                         Height="4"
+                                         Foreground="#6c5ce7"
+                                         Background="#2d2d4a"
+                                         CornerRadius="2"
+                                         Width="300" />
+                            <TextBlock Text="{Binding ImageGenProgressText}"
+                                       HorizontalAlignment="Center"
+                                       Foreground="#b0b0cc"
+                                       FontSize="15"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="Pollinations.AI miễn phí — có thể chậm đôi khi. Xin vui lòng đợi."
+                                       HorizontalAlignment="Center"
+                                       Foreground="#666688"
+                                       FontSize="12" />
+                            <Button Classes="danger"
+                                    Content="✖ Hủy"
+                                    Click="OnCancelImageGenClick"
+                                    HorizontalAlignment="Center"
+                                    Padding="16,8" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Image Grid -->
+                    <ItemsControl ItemsSource="{Binding ImageItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.DataTemplates>
+                            <DataTemplate x:DataType="local:ImageGenerationItem">
+                                <Border Background="#0f0f23"
+                                        CornerRadius="12"
+                                        Padding="12"
+                                        BorderBrush="#2d2d4a"
+                                        BorderThickness="1"
+                                        Margin="4"
+                                        Width="360">
+                                    <StackPanel Spacing="8">
+                                        <!-- Image number badge -->
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Grid.Column="0"
+                                                    Background="#6c5ce7"
+                                                    CornerRadius="6"
+                                                    Padding="8,3">
+                                                <TextBlock Text="{Binding DisplayLabel}"
+                                                           FontSize="11"
+                                                           FontWeight="Bold"
+                                                           Foreground="White" />
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Image display area -->
+                                        <Border CornerRadius="8"
+                                                ClipToBounds="True"
+                                                Height="180"
+                                                Background="#16213e"
+                                                IsVisible="{Binding HasImage}">
+                                            <Image Source="{Binding ImageBitmap}"
+                                                   Stretch="UniformToFill" />
+                                        </Border>
+
+                                        <!-- Loading state -->
+                                        <Border CornerRadius="8"
+                                                Height="180"
+                                                Background="#16213e"
+                                                IsVisible="{Binding IsGenerating}">
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                                                <ProgressBar IsIndeterminate="True"
+                                                             Height="3"
+                                                             Foreground="#6c5ce7"
+                                                             Background="#2d2d4a"
+                                                             CornerRadius="1"
+                                                             Width="120" />
+                                                <TextBlock Text="Đang tạo..."
+                                                           Foreground="#8888aa"
+                                                           FontSize="12"
+                                                           HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Error state with retry -->
+                                        <Border CornerRadius="8"
+                                                Height="180"
+                                                Background="#2d1520"
+                                                BorderBrush="#e74c3c"
+                                                BorderThickness="1"
+                                                IsVisible="{Binding HasError}"
+                                                Cursor="Hand">
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                                                <TextBlock Text="❌"
+                                                           FontSize="24"
+                                                           HorizontalAlignment="Center" />
+                                                <TextBlock Text="{Binding ErrorMessage}"
+                                                           Foreground="#ff9999"
+                                                           FontSize="11"
+                                                           HorizontalAlignment="Center"
+                                                           TextWrapping="Wrap"
+                                                           MaxWidth="200" />
+                                                <Button Classes="danger"
+                                                        Content="🔄 Thử lại"
+                                                        Click="OnRetryImageClick"
+                                                        Padding="12,6"
+                                                        FontSize="12"
+                                                        HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Placeholder when no image yet -->
+                                        <Border CornerRadius="8"
+                                                Height="180"
+                                                Background="#16213e"
+                                                IsVisible="{Binding !HasImage}">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                    <Binding Path="!HasImage" />
+                                                    <Binding Path="!IsGenerating" />
+                                                    <Binding Path="!HasError" />
+                                                </MultiBinding>
+                                            </Border.IsVisible>
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="4">
+                                                <TextBlock Text="🖼️"
+                                                           FontSize="28"
+                                                           HorizontalAlignment="Center" />
+                                                <TextBlock Text="Chưa tạo ảnh"
+                                                           Foreground="#666688"
+                                                           FontSize="11"
+                                                           HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Editable prompt -->
+                                        <TextBox Text="{Binding ImagePrompt, Mode=TwoWay}"
+                                                 Background="#16213e"
+                                                 Foreground="#b0b0cc"
+                                                 BorderBrush="#2d2d4a"
+                                                 BorderThickness="1"
+                                                 CornerRadius="6"
+                                                 Padding="8,6"
+                                                 FontSize="11"
+                                                 MaxHeight="50"
+                                                 TextWrapping="Wrap"
+                                                 Watermark="Image prompt..." />
+
+                                        <!-- Paragraph text preview -->
+                                        <TextBlock Text="{Binding ParagraphText}"
+                                                   Foreground="#8888aa"
+                                                   FontSize="10"
+                                                   TextWrapping="Wrap"
+                                                   MaxLines="3"
+                                                   TextTrimming="CharacterEllipsis" />
+
+                                        <!-- Regenerate button (when image exists) -->
+                                        <Button Classes="secondary"
+                                                Content="🔄 Tạo lại ảnh này"
+                                                Click="OnRegenerateImageClick"
+                                                Padding="10,5"
+                                                FontSize="11"
+                                                HorizontalAlignment="Stretch"
+                                                IsVisible="{Binding HasImage}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.DataTemplates>
+                    </ItemsControl>
+
+                    <!-- Next: Render Video button -->
+                    <Border Background="#152d1e"
+                            CornerRadius="12"
+                            Padding="18"
+                            BorderBrush="#00b894"
+                            BorderThickness="1"
+                            IsVisible="{Binding AllImagesReady}">
+                        <StackPanel Spacing="10" HorizontalAlignment="Center">
+                            <TextBlock Text="✅ Tất cả ảnh đã sẵn sàng!"
+                                       FontWeight="Bold"
+                                       Foreground="#00b894"
+                                       FontSize="15"
+                                       HorizontalAlignment="Center" />
+                            <Button Classes="success"
+                                    Content="Next: Render Video →"
+                                    IsEnabled="{Binding CanGoToRenderVideo}"
+                                    Click="OnGoToRenderClick"
+                                    Padding="32,14"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!--  VIDEO RENDER (ffmpeg — 100% offline)  -->
+            <!-- ═══════════════════════════════════════ -->
+
+            <Border Classes="card"
+                    IsVisible="{Binding ShowRenderSection}">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="section-title" Text="🎬 Render Video" />
+                        <TextBlock Text="Ghép ảnh + voiceover + phụ đề → video MP4 — chạy 100% offline bằng ffmpeg"
+                                   FontSize="12"
+                                   Foreground="#666688" />
+                    </StackPanel>
+
+                    <!-- Resolution selector + Render button -->
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding !IsRendering}">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Classes="label" Text="ĐỘ PHÂN GIẢI" />
+                                <ComboBox Classes="quality-select"
+                                          SelectedIndex="{Binding SelectedResolutionIndex}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="🖥️ 1920 × 1080 (Full HD)" />
+                                    <ComboBoxItem Content="📱 1280 × 720 (HD)" />
+                                </ComboBox>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Classes="success"
+                                    Content="🎬 Bắt đầu Render"
+                                    IsEnabled="{Binding CanStartRender}"
+                                    Click="OnStartRenderClick"
+                                    Padding="32,14"
+                                    FontSize="14"
+                                    FontWeight="Bold"
+                                    Margin="12,18,0,0"
+                                    VerticalAlignment="Bottom" />
+                        </Grid>
+
+                        <!-- Warning if no voiceover -->
+                        <Border Background="#2d2015"
+                                CornerRadius="8"
+                                Padding="12,8"
+                                BorderBrush="#e67e22"
+                                BorderThickness="1"
+                                IsVisible="{Binding !HasVoiceover}">
+                            <TextBlock Text="⚠️ Chưa có file voiceover. Vui lòng tạo lồng tiếng ở phần AI Voiceover trước khi render."
+                                       Foreground="#f0a040"
+                                       FontSize="12"
+                                       TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Rendering progress -->
+                    <Border Background="#1a1535"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="#6c5ce7"
+                            BorderThickness="1"
+                            IsVisible="{Binding IsRendering}">
+                        <StackPanel HorizontalAlignment="Center" Spacing="14">
+                            <ProgressBar Value="{Binding RenderProgress}"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Height="8"
+                                         Foreground="#6c5ce7"
+                                         Background="#2d2d4a"
+                                         CornerRadius="4"
+                                         Width="400" />
+                            <TextBlock Text="{Binding RenderProgressText}"
+                                       HorizontalAlignment="Center"
+                                       Foreground="#b0b0cc"
+                                       FontSize="16"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="Render video hoàn toàn offline — không cần internet"
+                                       HorizontalAlignment="Center"
+                                       Foreground="#666688"
+                                       FontSize="12" />
+                            <Button Classes="danger"
+                                    Content="✖ Hủy Render"
+                                    Click="OnCancelRenderClick"
+                                    HorizontalAlignment="Center"
+                                    Padding="16,8" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Render result -->
+                    <Border Background="#0f1f15"
+                            CornerRadius="12"
+                            Padding="20"
+                            BorderBrush="#00b894"
+                            BorderThickness="1"
+                            IsVisible="{Binding HasRenderedVideo}">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="✅ Video đã sẵn sàng!"
+                                       FontWeight="Bold"
+                                       Foreground="#00b894"
+                                       FontSize="18"
+                                       HorizontalAlignment="Center" />
+
+                            <!-- Thumbnail preview -->
+                            <Border CornerRadius="10"
+                                    ClipToBounds="True"
+                                    Height="240"
+                                    HorizontalAlignment="Center"
+                                    MaxWidth="500"
+                                    Background="#16213e"
+                                    IsVisible="{Binding HasRenderedVideoThumbnail}">
+                                <Image Source="{Binding RenderedVideoThumbnail}"
+                                       Stretch="Uniform" />
+                            </Border>
+
+                            <!-- Video info -->
+                            <Border Background="#1a2535"
+                                    CornerRadius="8"
+                                    Padding="16,10"
+                                    HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding RenderedVideoInfo}"
+                                           Foreground="#b0b0cc"
+                                           FontSize="14"
+                                           FontWeight="SemiBold" />
+                            </Border>
+
+                            <!-- Action buttons -->
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="12"
+                                        HorizontalAlignment="Center">
+                                <Button Classes="primary"
+                                        Content="📂 Mở thư mục"
+                                        Click="OnOpenRenderedVideoFolderClick"
+                                        Padding="24,12"
+                                        FontSize="14" />
+                                <Button Classes="success"
+                                        Content="▶ Xem trước"
+                                        Click="OnPreviewRenderedVideoClick"
+                                        Padding="24,12"
+                                        FontSize="14" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Status bar -->
+            <TextBlock Text="{Binding StatusMessage}"
+                       FontSize="12"
+                       Foreground="#6c5ce7"
+                       IsVisible="{Binding HasStatusMessage}"
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,0" />
+
+        </StackPanel>
+    </ScrollViewer>
+</Window>
