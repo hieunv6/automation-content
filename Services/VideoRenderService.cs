@@ -107,21 +107,28 @@ public class VideoRenderService
         var totalDuration = voiceoverChunkDurations.Sum();
         var crossfadeDuration = 0.3;
 
-        // Step 1: Generate SRT subtitle file
-        StatusChanged?.Invoke("Đang tạo phụ đề...");
         var tempDir = Path.Combine(Path.GetTempPath(), $"render_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
-        var srtPath = Path.Combine(tempDir, "subtitles.srt");
-        GenerateSrtFile(paragraphTexts, voiceoverChunkDurations, crossfadeDuration, srtPath);
-
-        // Step 2: Build ffmpeg command with xfade filter
-        StatusChanged?.Invoke("Đang render video...");
-
         try
         {
+            // Step 1: Burn subtitles into images using SkiaSharp (no libass needed)
+            StatusChanged?.Invoke("Đang tạo phụ đề trên ảnh...");
+            var subtitledImagePaths = new List<string>();
+            for (int i = 0; i < imagePaths.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var text = i < paragraphTexts.Count ? paragraphTexts[i] : "";
+                var subtitledPath = SubtitleRenderer.RenderSubtitledImage(
+                    imagePaths[i], text, width, height, tempDir);
+                subtitledImagePaths.Add(subtitledPath);
+                StatusChanged?.Invoke($"Đang tạo phụ đề trên ảnh... ({i + 1}/{imagePaths.Count})");
+            }
+
+            // Step 2: Build ffmpeg command with xfade filter (no subtitle filter needed)
+            StatusChanged?.Invoke("Đang render video...");
             var filterScriptPath = Path.Combine(tempDir, "filter.txt");
-            var args = BuildFfmpegCommandAndFilter(imagePaths, voiceoverChunkDurations, voiceoverPath, srtPath, crossfadeDuration, width, height, filterScriptPath, outputPath);
+            var args = BuildFfmpegCommandAndFilter(subtitledImagePaths, voiceoverChunkDurations, voiceoverPath, crossfadeDuration, width, height, filterScriptPath, outputPath);
 
             await RunFfmpegAsync(args, totalDuration, outputPath, ct);
 
@@ -132,7 +139,7 @@ public class VideoRenderService
         }
         finally
         {
-            // Cleanup
+            // Cleanup temp subtitled images
             try
             {
                 if (Directory.Exists(tempDir))
@@ -149,7 +156,6 @@ public class VideoRenderService
         List<string> imagePaths,
         List<double> durations,
         string voiceoverPath,
-        string srtPath,
         double crossfade,
         int width,
         int height,
@@ -164,8 +170,9 @@ public class VideoRenderService
         // Inputs: Add each image as a looping input with specific duration
         for (int i = 0; i < imagePaths.Count; i++)
         {
-            // Image duration = audio duration + crossfade (except last image)
-            var imgDuration = durations[i] + (i < imagePaths.Count - 1 ? crossfade : 0);
+            // Image duration = audio duration + crossfade + a small buffer (0.2s) 
+            // to ensure xfade doesn't run out of frames due to rounding.
+            var imgDuration = durations[i] + (i < imagePaths.Count - 1 ? crossfade : 0) + 0.2;
             
             sbArgs.Append($"-loop 1 -framerate 30 -t {imgDuration.ToString("F3", CultureInfo.InvariantCulture)} -i \"{imagePaths[i]}\" ");
         }
@@ -182,10 +189,10 @@ public class VideoRenderService
         }
 
         // 2. Apply xfade transitions
+        // Subtitles are already burned into images by SubtitleRenderer — no FFmpeg subtitle filter needed
         if (imagePaths.Count == 1)
         {
-            // No transitions
-            sbFilter.Append($"[v0]copy[outv_raw];\n");
+            sbFilter.Append($"[v0]copy[outv];\n");
         }
         else
         {
@@ -201,15 +208,8 @@ public class VideoRenderService
 
                 sbFilter.Append($"{in1}{in2}xfade=transition=fade:duration={durationStr}:offset={offsetStr}{outNode};\n");
             }
-            sbFilter.Append($"[x{imagePaths.Count - 1}]copy[outv_raw];\n");
+            sbFilter.Append($"[x{imagePaths.Count - 1}]copy[outv];\n");
         }
-
-        // 3. Apply subtitles
-        var escapedSrt = srtPath.Replace("\\", "/").Replace(":", "\\\\:");
-        var subtitleFilter = $"subtitles='{escapedSrt}':force_style='FontName=Arial,FontSize=36," +
-                             $"PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,Outline=2," +
-                             $"Alignment=2,MarginV=40'";
-        sbFilter.Append($"[outv_raw]{subtitleFilter}[outv]");
 
         File.WriteAllText(filterScriptPath, sbFilter.ToString());
 
@@ -223,43 +223,7 @@ public class VideoRenderService
         return sbArgs.ToString();
     }
 
-    /// <summary>
-    /// Generate SRT subtitle file from paragraph texts and durations.
-    /// Auto line-break at 60 characters.
-    /// </summary>
-    private void GenerateSrtFile(List<string> paragraphs, List<double> durations, double crossfade, string outputPath)
-    {
-        var sb = new StringBuilder();
-        double currentTime = 0;
 
-        for (int i = 0; i < paragraphs.Count; i++)
-        {
-            var startTime = currentTime;
-            var endTime = currentTime + durations[i];
-            if (i < paragraphs.Count - 1)
-            {
-                // Subtract half crossfade from end to avoid subtitle overlap during transition
-                endTime -= crossfade / 2;
-            }
-
-            // Format SRT timestamps
-            var start = FormatSrtTime(startTime);
-            var end = FormatSrtTime(endTime);
-
-            // Auto line-break at 60 characters
-            var text = WrapText(paragraphs[i], 60);
-
-            sb.AppendLine($"{i + 1}");
-            sb.AppendLine($"{start} --> {end}");
-            sb.AppendLine(text);
-            sb.AppendLine();
-
-            // Advance time, accounting for crossfade overlap with next image
-            currentTime = endTime - (i < paragraphs.Count - 1 ? crossfade / 2 : 0);
-        }
-
-        File.WriteAllText(outputPath, sb.ToString(), Encoding.UTF8);
-    }
 
 
 
@@ -283,12 +247,12 @@ public class VideoRenderService
 
         process.Start();
 
+        var fullLog = new StringBuilder();
+
         // Parse ffmpeg stderr for progress updates
         var stderrTask = Task.Run(async () =>
         {
             var buffer = new char[4096];
-            var lineBuffer = new StringBuilder();
-
             while (!process.StandardError.EndOfStream)
             {
                 ct.ThrowIfCancellationRequested();
@@ -296,8 +260,8 @@ public class VideoRenderService
                 var read = await process.StandardError.ReadAsync(buffer, ct);
                 if (read > 0)
                 {
-                    lineBuffer.Append(buffer, 0, read);
-                    var text = lineBuffer.ToString();
+                    var text = new string(buffer, 0, read);
+                    fullLog.Append(text);
 
                     // Look for time= in ffmpeg output
                     var timeMatch = Regex.Match(text, @"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})");
@@ -317,12 +281,6 @@ public class VideoRenderService
                         var progressText = $"Đang render... {currentFormatted} / {totalFormatted}";
 
                         ProgressChanged?.Invoke(percent, progressText);
-                    }
-
-                    // Keep only the last part to avoid memory growth
-                    if (lineBuffer.Length > 8192)
-                    {
-                        lineBuffer.Remove(0, lineBuffer.Length - 2048);
                     }
                 }
             }
@@ -350,10 +308,6 @@ public class VideoRenderService
 
         if (process.ExitCode != 0)
         {
-            // Try to read remaining stderr for error message
-            var remaining = "";
-            try { remaining = await process.StandardError.ReadToEndAsync(ct); } catch { }
-            
             var logPath = outputPath + ".error.log";
             try 
             {
@@ -366,7 +320,7 @@ public class VideoRenderService
                                $"{args}\n" +
                                $"----------------------------------------\n" +
                                $"ERROR OUTPUT (STDERR):\n" +
-                               $"{remaining}\n" +
+                               $"{fullLog}\n" +
                                $"========================================";
                 File.WriteAllText(logPath, errorLog);
             }
@@ -420,12 +374,6 @@ public class VideoRenderService
     }
 
     // ─── Helpers ───
-
-    private static string FormatSrtTime(double seconds)
-    {
-        var ts = TimeSpan.FromSeconds(Math.Max(0, seconds));
-        return $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2},{ts.Milliseconds:D3}";
-    }
 
     private static string FormatTime(double seconds)
     {

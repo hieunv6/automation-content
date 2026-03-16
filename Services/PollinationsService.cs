@@ -49,6 +49,13 @@ public class PollinationsService
         {
             Timeout = TimeSpan.FromSeconds(60)
         };
+
+        // Load API key from environment variable if present
+        var envKey = Environment.GetEnvironmentVariable("POLLINATIONS_API_KEY");
+        if (!string.IsNullOrWhiteSpace(envKey))
+        {
+            ApiKey = envKey;
+        }
     }
 
     /// <summary>

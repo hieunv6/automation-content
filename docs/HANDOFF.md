@@ -154,7 +154,9 @@ AutomationContent/
 │   ├── WhisperService.cs        # ⭐ Whisper.net local transcription + ffmpeg audio extraction
 │   ├── EdgeTtsService.cs        # ⭐ Edge TTS CLI wrapper — AI voiceover generation
 │   ├── TranslationService.cs    # ⭐ Google Translate wrapper — dịch thuật miễn phí
-│   └── PollinationsService.cs   # ⭐ Pollinations.AI wrapper — AI image generation miễn phí
+│   ├── PollinationsService.cs   # ⭐ Pollinations.AI wrapper — AI image generation miễn phí
+│   ├── VideoRenderService.cs    # ⭐ FFmpeg wrapper — render video từ ảnh + voiceover
+│   └── SubtitleRenderer.cs      # ⭐ SkiaSharp — burn subtitle vào ảnh (không cần libass)
 ├── docs/
 │   ├── HANDOFF.md               # 📄 Tài liệu này
 │   ├── ARCHITECTURE.md          # 📄 Chi tiết kiến trúc
@@ -541,6 +543,7 @@ dotnet publish -c Release -r win-x64 --self-contained true
 | Issue | Mô tả | Trạng thái | Giải pháp |
 |-------|--------|------------|----------|
 | ~~Video không xem được~~ | ~~yt-dlp chọn AV1+Opus, nhiều player không hỗ trợ~~ | ✅ Đã fix (14/03/2026) | Ép codec H.264+AAC qua format string |
+| ~~Subtitle filter lỗi~~ | ~~FFmpeg báo `No such filter: 'subtitles'` khi không có libass~~ | ✅ Đã fix (16/03/2026) | Burn subtitle vào ảnh bằng SkiaSharp trước khi gửi cho FFmpeg |
 | yt-dlp phải cài sẵn | App không bundle yt-dlp | ⬜ Chưa xử lý | Có thể bundle hoặc tự download yt-dlp binary |
 | ffmpeg phải cài sẵn | Merge/extract cần ffmpeg | ⬜ Chưa xử lý | Có thể bundle ffmpeg-static |
 | Không persist settings | Save folder reset khi restart app | ⬜ Chưa xử lý | Thêm settings file (JSON/XML) |
@@ -565,6 +568,7 @@ dotnet publish -c Release -r win-x64 --self-contained true
 | 14/03/2026 | Thêm dịch thuật 12 ngôn ngữ + giọng lồng tiếng động theo ngôn ngữ | `Services/TranslationService.cs`, `Models/LanguageVoiceMap.cs`, `ViewModels/MainViewModel.cs`, `MainWindow.axaml`, `MainWindow.axaml.cs` |
 | 14/03/2026 | Thêm AI Image Generation: tạo ảnh minh họa từ transcript bằng Pollinations.AI (miễn phí, không API key) | `Services/PollinationsService.cs`, `Models/ImageGenerationItem.cs`, `ViewModels/MainViewModel.cs`, `MainWindow.axaml`, `MainWindow.axaml.cs` |
 | 14/03/2026 | Thêm hỗ trợ API Key cho Pollinations.AI: nhập API key tuỳ chọn để giảm rate limit, hỗ trợ cả sk_ và pk_ key | `Services/PollinationsService.cs`, `ViewModels/MainViewModel.cs`, `MainWindow.axaml` |
+| 16/03/2026 | Fix subtitle rendering: burn subtitle vào ảnh bằng SkiaSharp thay vì dùng FFmpeg subtitles filter (không cần libass) | `Services/VideoRenderService.cs`, `Services/SubtitleRenderer.cs` |
 
 ---
 

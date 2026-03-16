@@ -327,6 +327,40 @@ Chọn **Pollinations.AI** vì:
 
 ---
 
+## ADR-010: Burn Subtitle vào Ảnh bằng SkiaSharp thay vì FFmpeg subtitles filter
+
+**Ngày:** 16/03/2026
+**Trạng thái:** Accepted
+
+### Context
+Video render sử dụng FFmpeg `subtitles` filter để hiện phụ đề lên video. Filter này yêu cầu FFmpeg được compile với `libass`. Trên nhiều máy (đặc biệt Homebrew macOS), FFmpeg mặc định **không có libass** → gây lỗi `No such filter: 'subtitles'`.
+
+### Các lựa chọn đã xem xét
+1. **FFmpeg subtitles filter** — Cần libass, không portable
+2. **FFmpeg drawtext filter** — Không cần libass nhưng khó wrap text, thiếu outline
+3. **Burn subtitle vào ảnh bằng SkiaSharp** — Xử lý hoàn toàn trong C#, không phụ thuộc FFmpeg build
+
+### Quyết định
+Chọn **Burn subtitle vào ảnh bằng SkiaSharp** vì:
+- Không phụ thuộc vào cách FFmpeg được compile
+- SkiaSharp đã là dependency (Avalonia UI sử dụng)
+- Full control: font, size, outline, position, word wrap
+- Chạy trên mọi platform mà không cần config thêm
+
+### Architecture
+- `SubtitleRenderer.cs`: Nhận ảnh gốc + text → resize/pad ảnh → vẽ text với outline ở dưới → xuất ảnh mới
+- `VideoRenderService.cs`: Pre-process tất cả ảnh qua `SubtitleRenderer` trước khi gửi cho FFmpeg
+- FFmpeg filter chỉ còn: scale + xfade transitions (không còn `subtitles` filter)
+
+### Consequences
+- (+) Hoạt động trên mọi FFmpeg build (không cần libass)
+- (+) Full control về typography và layout
+- (+) Không cần tạo file SRT trung gian
+- (-) Tăng thời gian render (phải xử lý ảnh trước FFmpeg)
+- (-) Subtitle "cứng" trên ảnh (không tắt/bật được như SRT)
+
+---
+
 ## Flow Diagram: User Journey
 
 ```

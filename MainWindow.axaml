@@ -171,21 +171,110 @@
         </Style>
 
 
+        <Style Selector="TextBox.editable-title">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Margin" Value="-9,0,0,0" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+        <Style Selector="TextBox.editable-title:pointerover /template/ Border">
+            <Setter Property="Background" Value="#1e293b" />
+        </Style>
+        <Style Selector="TextBox.editable-title:focus /template/ Border">
+            <Setter Property="Background" Value="#0f172a" />
+            <Setter Property="BorderBrush" Value="#6c5ce7" />
+        </Style>
+
     </Window.Styles>
 
-    <ScrollViewer>
+    <Grid ColumnDefinitions="260,*">
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="#16213e" BorderBrush="#2d2d4a" BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Sidebar Header -->
+                <Border Grid.Row="0" Padding="20">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="📁 Projects" FontSize="20" FontWeight="Bold" Foreground="White" />
+                        <Button Classes="primary" Content="+ New Project" HorizontalAlignment="Stretch" Click="OnNewProjectClick" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Projects List -->
+                <ScrollViewer Grid.Row="1">
+                    <ItemsControl ItemsSource="{Binding ProjectsList}" Margin="12,8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:ProjectInfo">
+                                <Border CornerRadius="12" 
+                                        Background="#1e293b" 
+                                        BorderBrush="#334155" 
+                                        BorderThickness="1" 
+                                        Margin="0,4">
+                                    <Grid>
+                                        <Button HorizontalAlignment="Stretch" 
+                                                VerticalAlignment="Stretch"
+                                                Background="Transparent" 
+                                                Padding="14,12" 
+                                                Click="OnLoadProjectClick"
+                                                CornerRadius="12">
+                                            <StackPanel Spacing="6" HorizontalAlignment="Stretch">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="#f8fafc" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding VideoTitle}" FontSize="12" Foreground="#94a3b8" TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                                                        <TextBlock Text="⏱" FontSize="10" Foreground="#64748b"/>
+                                                        <TextBlock Text="{Binding LastModified}" FontSize="10" Foreground="#64748b" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Button>
+                                        <!-- Trash overlay button on bottom right -->
+                                        <Button HorizontalAlignment="Right"
+                                                VerticalAlignment="Bottom"
+                                                Margin="0,0,8,8"
+                                                Padding="6,4" 
+                                                Background="#334155" 
+                                                Foreground="#fca5a5" 
+                                                FontSize="12" 
+                                                Content="🗑" 
+                                                Click="OnDeleteProjectClick"
+                                                CornerRadius="6"
+                                                ToolTip.Tip="Delete Project"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Sidebar Footer -->
+                <Border Grid.Row="2" Padding="20" Background="#0f172a">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Current Project:" FontSize="10" Foreground="#8888aa"/>
+                        <TextBlock Text="{Binding CurrentProjectName}" FontWeight="Bold" Foreground="#6c5ce7" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Column="1">
         <StackPanel Margin="32,24,32,32" Spacing="20">
 
-            <!-- Header -->
-            <StackPanel Margin="0,0,0,4">
-                <TextBlock Text="🎬 Automation Content"
-                           FontSize="28"
-                           FontWeight="Bold"
-                           Foreground="White" />
-                <TextBlock Text="Download YouTube videos with ease"
-                           FontSize="14"
-                           Foreground="#6c5ce7"
-                           Margin="0,4,0,0" />
+            <!-- Header with editable text -->
+            <StackPanel Margin="0,0,0,12" Spacing="2">
+                <TextBox Classes="editable-title"
+                         Text="{Binding CurrentProjectName, Mode=TwoWay}"
+                         Watermark="Project Name..." />
+                <TextBlock Text="▶ Automation Content Studio • Advanced Workflow"
+                           FontSize="13"
+                           Foreground="#818cf8"
+                           FontWeight="SemiBold" 
+                           Margin="0,2,0,0"/>
             </StackPanel>
 
             <!-- URL Input Section -->
@@ -1177,4 +1266,5 @@
 
         </StackPanel>
     </ScrollViewer>
+    </Grid>
 </Window>

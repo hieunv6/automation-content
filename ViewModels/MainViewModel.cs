@@ -14,6 +14,7 @@ using AutomationContent.Models;
 using AutomationContent.Services;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Newtonsoft.Json;
 
 namespace AutomationContent.ViewModels;
 
@@ -68,6 +69,345 @@ public class MainViewModel : INotifyPropertyChanged
         }
 
         SelectedQualityIndex = 1; // Default: 720p
+
+        // Ensure projects folder exists
+        if (!Directory.Exists(_projectsBaseDir))
+            Directory.CreateDirectory(_projectsBaseDir);
+
+        // Load saved state
+        LoadState();
+        RefreshProjectsList();
+    }
+
+    private bool _isLoadingState;
+    private string _currentProjectName = "Default Project";
+    public string CurrentProjectName
+    {
+        get => _currentProjectName;
+        set 
+        { 
+            if (string.IsNullOrWhiteSpace(value) || value == _currentProjectName) return;
+
+            var newName = string.Join("_", value.Split(Path.GetInvalidFileNameChars())).Trim();
+            if (string.IsNullOrEmpty(newName) || newName == _currentProjectName) return;
+
+            var oldPath = Path.Combine(_projectsBaseDir, $"{_currentProjectName}.json");
+            var newPath = Path.Combine(_projectsBaseDir, $"{newName}.json");
+
+            if (File.Exists(newPath) && newName != _currentProjectName)
+            {
+                ErrorMessage = "A project with this name already exists.";
+                OnPropertyChanged(); // Revert back in UI
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(_currentProjectName) && File.Exists(oldPath))
+            {
+                try { File.Move(oldPath, newPath); } catch { }
+            }
+
+            _currentProjectName = newName; 
+            OnPropertyChanged(); 
+            AutoSave(); 
+            RefreshProjectsList();
+        }
+    }
+
+    private ObservableCollection<ProjectInfo> _projectsList = new();
+    public ObservableCollection<ProjectInfo> ProjectsList
+    {
+        get => _projectsList;
+        set { _projectsList = value; OnPropertyChanged(); }
+    }
+
+    private readonly string _projectsBaseDir = Path.Combine(AppContext.BaseDirectory, "Projects");
+    private string StateFilePath => Path.Combine(_projectsBaseDir, $"{CurrentProjectName}.json");
+
+    private void RefreshProjectsList()
+    {
+        try
+        {
+            if (!Directory.Exists(_projectsBaseDir))
+                Directory.CreateDirectory(_projectsBaseDir);
+
+            var files = Directory.GetFiles(_projectsBaseDir, "*.json");
+            var list = new List<ProjectInfo>();
+            foreach (var file in files)
+            {
+                try
+                {
+                    var json = File.ReadAllText(file);
+                    var state = JsonConvert.DeserializeObject<AppState>(json);
+                    if (state != null)
+                    {
+                        list.Add(new ProjectInfo { 
+                            Name = Path.GetFileNameWithoutExtension(file),
+                            LastModified = state.LastModified,
+                            VideoTitle = state.VideoTitle
+                        });
+                    }
+                }
+                catch { }
+            }
+            ProjectsList = new ObservableCollection<ProjectInfo>(list.OrderByDescending(p => p.LastModified));
+        }
+        catch { }
+    }
+
+    public void CreateNewProject()
+    {
+        // For simplicity, generate a name or ask? 
+        // Let's create a "New Project [Timestamp]"
+        var name = $"Project {DateTime.Now:yyyyMMdd_HHmmss}";
+        CurrentProjectName = name;
+        
+        // Reset all fields
+        ResetAllFields();
+        
+        AutoSave();
+        RefreshProjectsList();
+    }
+
+    private void ResetAllFields()
+    {
+        _isLoadingState = true;
+        try
+        {
+            VideoUrl = "";
+            VideoTitle = "";
+            VideoDuration = "";
+            VideoChannel = "";
+            VideoViews = "";
+            HasVideoInfo = false;
+            DownloadedFilePath = "";
+            TranscriptText = "";
+            TranscriptLanguage = "";
+            TranscribeFilePath = "";
+            VoiceoverText = "";
+            VoiceoverFilePath = "";
+            VoiceoverChunkDurations = new();
+            ImageItems.Clear();
+            ShowImageSection = false;
+            AllImagesReady = false;
+            ShowRenderSection = false;
+            RenderedVideoPath = "";
+            SuccessMessage = "";
+            ErrorMessage = "";
+            StatusMessage = "New project created.";
+            ThumbnailBitmap = null;
+        }
+        finally
+        {
+            _isLoadingState = false;
+        }
+    }
+
+    public void LoadProjectByName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return;
+        _currentProjectName = name; // set backing field to avoid renaming side-effects
+        OnPropertyChanged(nameof(CurrentProjectName));
+        LoadState();
+    }
+
+    public void DeleteProject(string name)
+    {
+        try
+        {
+            var path = Path.Combine(_projectsBaseDir, $"{name}.json");
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+                RefreshProjectsList();
+                if (CurrentProjectName == name)
+                {
+                    CreateNewProject();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Could not delete project: {ex.Message}";
+        }
+    }
+
+    private void AutoSave()
+    {
+        if (_isLoadingState) return;
+        
+        try
+        {
+            if (!Directory.Exists(_projectsBaseDir))
+                Directory.CreateDirectory(_projectsBaseDir);
+
+            var state = new AppState
+            {
+                ProjectName = CurrentProjectName,
+                LastModified = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                VideoUrl = VideoUrl,
+                VideoTitle = VideoTitle,
+                VideoDuration = VideoDuration,
+                VideoChannel = VideoChannel,
+                VideoViews = VideoViews,
+                HasVideoInfo = HasVideoInfo,
+                DownloadedFilePath = DownloadedFilePath,
+                SaveFolder = SaveFolder,
+                SelectedQualityIndex = SelectedQualityIndex,
+                TranscriptText = TranscriptText,
+                TranscriptLanguage = TranscriptLanguage,
+                TranscribeFilePath = TranscribeFilePath,
+                VoiceoverText = VoiceoverText,
+                VoiceoverFilePath = VoiceoverFilePath,
+                VoiceoverChunkDurations = VoiceoverChunkDurations,
+                SelectedLanguageIndex = SelectedLanguageIndex,
+                SelectedVoiceIndex = SelectedVoiceIndex,
+                SelectedSpeedIndex = SelectedSpeedIndex,
+                SelectedImageStyleIndex = SelectedImageStyleIndex,
+                ShowImageSection = ShowImageSection,
+                AllImagesReady = AllImagesReady,
+                ShowRenderSection = ShowRenderSection,
+                RenderedVideoPath = RenderedVideoPath,
+                SelectedResolutionIndex = SelectedResolutionIndex,
+                ImageItems = ImageItems.Select(i => new ImageState
+                {
+                    Index = i.Index,
+                    ParagraphText = i.ParagraphText,
+                    ImagePrompt = i.ImagePrompt,
+                    ImagePath = i.ImagePath
+                }).ToList()
+            };
+
+            var json = JsonConvert.SerializeObject(state, Formatting.Indented);
+            File.WriteAllText(StateFilePath, json);
+        }
+        catch { /* Ignore save errors in background */ }
+    }
+
+    private void LoadState()
+    {
+        // Try the last used project if name is not set, or use project file
+        var path = StateFilePath;
+        if (!File.Exists(path))
+        {
+            // Try to find any project to load
+            RefreshProjectsList();
+            if (ProjectsList.Count > 0)
+            {
+                _currentProjectName = ProjectsList[0].Name;
+                path = StateFilePath;
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        try
+        {
+            _isLoadingState = true;
+            var json = File.ReadAllText(path);
+            var state = JsonConvert.DeserializeObject<AppState>(json);
+            if (state == null) return;
+
+            // Apply state
+            _currentProjectName = state.ProjectName;
+            OnPropertyChanged(nameof(CurrentProjectName));
+            
+            VideoUrl = state.VideoUrl;
+            VideoTitle = state.VideoTitle;
+            VideoDuration = state.VideoDuration;
+            VideoChannel = state.VideoChannel;
+            VideoViews = state.VideoViews;
+            HasVideoInfo = state.HasVideoInfo;
+            DownloadedFilePath = state.DownloadedFilePath;
+            if (!string.IsNullOrEmpty(state.SaveFolder)) SaveFolder = state.SaveFolder;
+            SelectedQualityIndex = state.SelectedQualityIndex;
+            TranscriptText = state.TranscriptText;
+            TranscriptLanguage = state.TranscriptLanguage;
+            TranscribeFilePath = state.TranscribeFilePath;
+            VoiceoverText = state.VoiceoverText;
+            VoiceoverFilePath = state.VoiceoverFilePath;
+            VoiceoverChunkDurations = state.VoiceoverChunkDurations ?? new();
+            SelectedLanguageIndex = state.SelectedLanguageIndex;
+            SelectedVoiceIndex = state.SelectedVoiceIndex;
+            SelectedSpeedIndex = state.SelectedSpeedIndex;
+            SelectedImageStyleIndex = state.SelectedImageStyleIndex;
+            ShowImageSection = state.ShowImageSection;
+            AllImagesReady = state.AllImagesReady;
+            ShowRenderSection = state.ShowRenderSection;
+            RenderedVideoPath = state.RenderedVideoPath;
+            SelectedResolutionIndex = state.SelectedResolutionIndex;
+
+            // Load images
+            ImageItems.Clear();
+            if (state.ImageItems != null)
+            {
+                foreach (var img in state.ImageItems)
+                {
+                    var item = new ImageGenerationItem
+                    {
+                        Index = img.Index,
+                        ParagraphText = img.ParagraphText,
+                        ImagePrompt = img.ImagePrompt,
+                        ImagePath = img.ImagePath
+                    };
+                    
+                    item.PropertyChanged += (s, e) => {
+                        if (e.PropertyName == nameof(ImageGenerationItem.ImagePrompt))
+                            AutoSave();
+                    };
+
+                    // Lazy load bitmap
+                    if (!string.IsNullOrEmpty(img.ImagePath) && File.Exists(img.ImagePath))
+                    {
+                        Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var bytes = await File.ReadAllBytesAsync(img.ImagePath);
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    using var ms = new MemoryStream(bytes);
+                                    item.ImageBitmap = new Bitmap(ms);
+                                });
+                            }
+                            catch { }
+                        });
+                    }
+                    ImageItems.Add(item);
+                }
+            }
+
+            // If we have rendered video, refresh info
+            if (HasRenderedVideo)
+            {
+                Task.Run(async () => await RefreshRenderedVideoInfoAsync());
+            }
+
+            StatusMessage = $"Project '{CurrentProjectName}' restored.";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to load state: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingState = false;
+        }
+    }
+
+    private async Task RefreshRenderedVideoInfoAsync()
+    {
+        try
+        {
+            var (duration, size) = await _videoRenderService.GetVideoInfoAsync(RenderedVideoPath);
+            var sizeText = VideoRenderService.FormatFileSize(size);
+            var durationText = TimeSpan.FromSeconds(duration).ToString(@"mm\:ss");
+            Dispatcher.UIThread.Post(() => {
+                RenderedVideoInfo = $"Độ dài: {durationText} | Dung lượng: {sizeText}";
+            });
+        }
+        catch { }
     }
 
     // Properties
@@ -91,6 +431,7 @@ public class MainViewModel : INotifyPropertyChanged
                 ThumbnailBitmap = null;
             }
             ClearMessages();
+            AutoSave();
         }
     }
 
@@ -215,21 +556,21 @@ public class MainViewModel : INotifyPropertyChanged
     public string DownloadedFilePath
     {
         get => _downloadedFilePath;
-        set { _downloadedFilePath = value; OnPropertyChanged(); }
+        set { _downloadedFilePath = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private string _saveFolder = string.Empty;
     public string SaveFolder
     {
         get => _saveFolder;
-        set { _saveFolder = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanDownload)); }
+        set { _saveFolder = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanDownload)); AutoSave(); }
     }
 
     private int _selectedQualityIndex;
     public int SelectedQualityIndex
     {
         get => _selectedQualityIndex;
-        set { _selectedQualityIndex = value; OnPropertyChanged(); }
+        set { _selectedQualityIndex = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private bool _isYtDlpMissing;
@@ -410,6 +751,7 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(HasTranscript));
             OnPropertyChanged(nameof(CanGenerateVoiceover));
             OnPropertyChanged(nameof(CanGenerateImages));
+            AutoSave();
         }
     }
 
@@ -419,14 +761,14 @@ public class MainViewModel : INotifyPropertyChanged
     public string TranscriptLanguage
     {
         get => _transcriptLanguage;
-        set { _transcriptLanguage = value; OnPropertyChanged(); }
+        set { _transcriptLanguage = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private string _transcribeFilePath = string.Empty;
     public string TranscribeFilePath
     {
         get => _transcribeFilePath;
-        set { _transcribeFilePath = value; OnPropertyChanged(); }
+        set { _transcribeFilePath = value; OnPropertyChanged(); AutoSave(); }
     }
 
     public bool CanTranscribe => !IsTranscribing;
@@ -590,6 +932,7 @@ public class MainViewModel : INotifyPropertyChanged
             // Reset voice index when language changes
             SelectedVoiceIndex = 0;
             OnPropertyChanged(nameof(VoiceDisplayNames));
+            AutoSave();
         }
     }
 
@@ -633,6 +976,7 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanGenerateVoiceover));
             OnPropertyChanged(nameof(CanTranslate));
+            AutoSave();
         }
     }
 
@@ -640,14 +984,14 @@ public class MainViewModel : INotifyPropertyChanged
     public int SelectedVoiceIndex
     {
         get => _selectedVoiceIndex;
-        set { _selectedVoiceIndex = value; OnPropertyChanged(); }
+        set { _selectedVoiceIndex = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private int _selectedSpeedIndex = 1; // Default: Bình thường
     public int SelectedSpeedIndex
     {
         get => _selectedSpeedIndex;
-        set { _selectedSpeedIndex = value; OnPropertyChanged(); }
+        set { _selectedSpeedIndex = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private bool _isGeneratingVoiceover;
@@ -680,6 +1024,7 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasVoiceover));
             OnPropertyChanged(nameof(CanStartRender));
+            AutoSave();
         }
     }
 
@@ -1065,7 +1410,7 @@ public class MainViewModel : INotifyPropertyChanged
     public int SelectedImageStyleIndex
     {
         get => _selectedImageStyleIndex;
-        set { _selectedImageStyleIndex = value; OnPropertyChanged(); }
+        set { _selectedImageStyleIndex = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private ImageStyle SelectedImageStyle => SelectedImageStyleIndex switch
@@ -1081,7 +1426,7 @@ public class MainViewModel : INotifyPropertyChanged
     public bool ShowImageSection
     {
         get => _showImageSection;
-        set { _showImageSection = value; OnPropertyChanged(); }
+        set { _showImageSection = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private bool _allImagesReady;
@@ -1093,6 +1438,7 @@ public class MainViewModel : INotifyPropertyChanged
             _allImagesReady = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanGoToRenderVideo));
+            AutoSave();
         }
     }
 
@@ -1137,13 +1483,22 @@ public class MainViewModel : INotifyPropertyChanged
 
         for (int i = 0; i < paragraphs.Count; i++)
         {
-            ImageItems.Add(new ImageGenerationItem
+            var item = new ImageGenerationItem
             {
                 Index = i,
                 ParagraphText = paragraphs[i],
                 ImagePrompt = string.Empty
-            });
+            };
+            
+            // Subscribed to changes (like user editing Prompt in UI) so we can auto-save
+            item.PropertyChanged += (s, e) => {
+                if (e.PropertyName == nameof(ImageGenerationItem.ImagePrompt))
+                    AutoSave();
+            };
+            
+            ImageItems.Add(item);
         }
+        AutoSave();
     }
 
     /// <summary>
@@ -1222,7 +1577,10 @@ public class MainViewModel : INotifyPropertyChanged
                     var prompt = await _pollinationsService.GenerateImagePromptAsync(
                         item.ParagraphText, ct);
 
-                    Dispatcher.UIThread.Post(() => item.ImagePrompt = prompt);
+                    Dispatcher.UIThread.Post(() => {
+                        item.ImagePrompt = prompt;
+                        AutoSave();
+                    });
 
                     // Small delay between prompt requests
                     await Task.Delay(500, ct);
@@ -1264,6 +1622,7 @@ public class MainViewModel : INotifyPropertyChanged
                             item.ImageBitmap = new Bitmap(ms);
                             item.ImagePath = outputPath;
                             item.HasError = false;
+                            AutoSave();
                         }
                         catch
                         {
@@ -1371,6 +1730,7 @@ public class MainViewModel : INotifyPropertyChanged
                         item.ImageBitmap = new Bitmap(ms);
                         item.ImagePath = outputPath;
                         item.HasError = false;
+                        AutoSave();
                     }
                     catch
                     {
@@ -1435,7 +1795,7 @@ public class MainViewModel : INotifyPropertyChanged
     public bool ShowRenderSection
     {
         get => _showRenderSection;
-        set { _showRenderSection = value; OnPropertyChanged(); }
+        set { _showRenderSection = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private bool _isRendering;
@@ -1468,7 +1828,7 @@ public class MainViewModel : INotifyPropertyChanged
     public int SelectedResolutionIndex
     {
         get => _selectedResolutionIndex;
-        set { _selectedResolutionIndex = value; OnPropertyChanged(); }
+        set { _selectedResolutionIndex = value; OnPropertyChanged(); AutoSave(); }
     }
 
     private (int width, int height) SelectedResolution => SelectedResolutionIndex switch
@@ -1487,6 +1847,7 @@ public class MainViewModel : INotifyPropertyChanged
             _renderedVideoPath = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasRenderedVideo));
+            AutoSave();
         }
     }
 

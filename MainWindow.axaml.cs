@@ -23,6 +23,31 @@ public partial class MainWindow : Window
     }
 
     // ═══════════════════════════════════════
+    //  PROJECT HANDLERS
+    // ═══════════════════════════════════════
+
+    private void OnNewProjectClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.CreateNewProject();
+    }
+
+    private void OnLoadProjectClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.DataContext is AutomationContent.Models.ProjectInfo project)
+        {
+            _viewModel.LoadProjectByName(project.Name);
+        }
+    }
+
+    private void OnDeleteProjectClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.DataContext is AutomationContent.Models.ProjectInfo project)
+        {
+            _viewModel.DeleteProject(project.Name);
+        }
+    }
+
+    // ═══════════════════════════════════════
     //  DOWNLOAD HANDLERS
     // ═══════════════════════════════════════
 
