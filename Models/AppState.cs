@@ -44,6 +44,10 @@ public class AppState
     public bool ShowRenderSection { get; set; }
     public string RenderedVideoPath { get; set; } = string.Empty;
     public int SelectedResolutionIndex { get; set; }
+    public int SelectedSubtitleModeIndex { get; set; }
+
+    // Wizard step
+    public int CurrentStep { get; set; }
 }
 
 public class ImageState

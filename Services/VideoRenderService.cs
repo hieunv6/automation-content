@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using AutomationContent.Models;
 
 namespace AutomationContent.Services;
 
@@ -79,6 +80,8 @@ public class VideoRenderService
         string outputPath,
         int width = 1920,
         int height = 1080,
+        SubtitleDisplayMode subtitleMode = SubtitleDisplayMode.FullText,
+        SubtitleStyle? subtitleStyle = null,
         CancellationToken ct = default)
     {
         if (imagePaths.Count == 0)
@@ -112,23 +115,52 @@ public class VideoRenderService
 
         try
         {
-            // Step 1: Burn subtitles into images using SkiaSharp (no libass needed)
+            // Step 1: Burn subtitles into images using SkiaSharp
+            // For SentenceBySentence/ShortLines modes, each paragraph generates multiple sub-images
             StatusChanged?.Invoke("Đang tạo phụ đề trên ảnh...");
             var subtitledImagePaths = new List<string>();
+            var adjustedDurations = new List<double>();
+
             for (int i = 0; i < imagePaths.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
                 var text = i < paragraphTexts.Count ? paragraphTexts[i] : "";
-                var subtitledPath = SubtitleRenderer.RenderSubtitledImage(
-                    imagePaths[i], text, width, height, tempDir);
-                subtitledImagePaths.Add(subtitledPath);
+                var chunkDur = i < voiceoverChunkDurations.Count ? voiceoverChunkDurations[i] : 3.0;
+
+                if (subtitleMode == SubtitleDisplayMode.FullText)
+                {
+                    // Single image with full text
+                    var subtitledPath = SubtitleRenderer.RenderSubtitledImage(
+                        imagePaths[i], text, width, height, tempDir, subtitleMode, -1, subtitleStyle);
+                    subtitledImagePaths.Add(subtitledPath);
+                    adjustedDurations.Add(chunkDur);
+                }
+                else
+                {
+                    // Multiple sub-images for progressive text display
+                    var chunks = SubtitleTextSplitter.SplitText(text, subtitleMode);
+                    var subDur = chunkDur / Math.Max(1, chunks.Count);
+
+                    for (int c = 0; c < chunks.Count; c++)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        var subtitledPath = SubtitleRenderer.RenderSubtitledImage(
+                            imagePaths[i], text, width, height, tempDir, subtitleMode, c, subtitleStyle);
+                        subtitledImagePaths.Add(subtitledPath);
+                        adjustedDurations.Add(Math.Max(0.5, subDur));
+                    }
+                }
                 StatusChanged?.Invoke($"Đang tạo phụ đề trên ảnh... ({i + 1}/{imagePaths.Count})");
             }
 
-            // Step 2: Build ffmpeg command with xfade filter (no subtitle filter needed)
+            // Use adjusted paths/durations for the rest
+            imagePaths = subtitledImagePaths;
+            voiceoverChunkDurations = adjustedDurations;
+
+            // Step 2: Build ffmpeg command with xfade filter
             StatusChanged?.Invoke("Đang render video...");
             var filterScriptPath = Path.Combine(tempDir, "filter.txt");
-            var args = BuildFfmpegCommandAndFilter(subtitledImagePaths, voiceoverChunkDurations, voiceoverPath, crossfadeDuration, width, height, filterScriptPath, outputPath);
+            var args = BuildFfmpegCommandAndFilter(imagePaths, voiceoverChunkDurations, voiceoverPath, crossfadeDuration, width, height, filterScriptPath, outputPath);
 
             await RunFfmpegAsync(args, totalDuration, outputPath, ct);
 

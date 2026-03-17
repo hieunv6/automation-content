@@ -25,6 +25,100 @@ public class MainViewModel : INotifyPropertyChanged
     private CancellationTokenSource? _downloadCts;
     private CancellationTokenSource? _transcribeCts;
 
+    // ═══════════════════════════════════════
+    //  STEP-BASED WIZARD NAVIGATION
+    // ═══════════════════════════════════════
+
+    public static readonly string[] StepNames = { "Download", "Transcribe", "Voiceover", "Images", "Render" };
+    public static readonly string[] StepIcons = { "⬇️", "🎙️", "🎤", "🖼️", "🎬" };
+
+    private int _currentStep;
+    public int CurrentStep
+    {
+        get => _currentStep;
+        set
+        {
+            if (value < 0 || value >= StepNames.Length) return;
+            _currentStep = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsStep0));
+            OnPropertyChanged(nameof(IsStep1));
+            OnPropertyChanged(nameof(IsStep2));
+            OnPropertyChanged(nameof(IsStep3));
+            OnPropertyChanged(nameof(IsStep4));
+            OnPropertyChanged(nameof(CanGoBack));
+            OnPropertyChanged(nameof(CanGoNext));
+            OnPropertyChanged(nameof(CurrentStepName));
+            if (_currentStep == 4) InitializePreview();
+            AutoSave();
+        }
+    }
+
+    public bool IsStep0 => CurrentStep == 0;
+    public bool IsStep1 => CurrentStep == 1;
+    public bool IsStep2 => CurrentStep == 2;
+    public bool IsStep3 => CurrentStep == 3;
+    public bool IsStep4 => CurrentStep == 4;
+
+    public bool CanGoBack => CurrentStep > 0;
+    public bool CanGoNext => CurrentStep < StepNames.Length - 1;
+    public string CurrentStepName => StepNames[CurrentStep];
+
+    public void GoToStep(int step)
+    {
+        CurrentStep = step;
+    }
+
+    public void NextStep()
+    {
+        if (CanGoNext) CurrentStep++;
+    }
+
+    public void PrevStep()
+    {
+        if (CanGoBack) CurrentStep--;
+    }
+
+    // ═══════════════════════════════════════
+    //  PROJECT DELETE CONFIRMATION
+    // ═══════════════════════════════════════
+
+    private bool _showDeleteConfirm;
+    public bool ShowDeleteConfirm
+    {
+        get => _showDeleteConfirm;
+        set { _showDeleteConfirm = value; OnPropertyChanged(); }
+    }
+
+    private string _deleteTargetProjectName = string.Empty;
+    public string DeleteTargetProjectName
+    {
+        get => _deleteTargetProjectName;
+        set { _deleteTargetProjectName = value; OnPropertyChanged(); }
+    }
+
+    public void RequestDeleteProject(string name)
+    {
+        DeleteTargetProjectName = name;
+        ShowDeleteConfirm = true;
+    }
+
+    public void ConfirmDeleteProject()
+    {
+        if (!string.IsNullOrEmpty(DeleteTargetProjectName))
+        {
+            DeleteProject(DeleteTargetProjectName);
+        }
+        ShowDeleteConfirm = false;
+        DeleteTargetProjectName = string.Empty;
+    }
+
+    public void CancelDeleteProject()
+    {
+        ShowDeleteConfirm = false;
+        DeleteTargetProjectName = string.Empty;
+    }
+
     public MainViewModel()
     {
         _ytDlpService = new YtDlpService();
@@ -268,6 +362,8 @@ public class MainViewModel : INotifyPropertyChanged
                 ShowRenderSection = ShowRenderSection,
                 RenderedVideoPath = RenderedVideoPath,
                 SelectedResolutionIndex = SelectedResolutionIndex,
+                SelectedSubtitleModeIndex = SelectedSubtitleModeIndex,
+                CurrentStep = CurrentStep,
                 ImageItems = ImageItems.Select(i => new ImageState
                 {
                     Index = i.Index,
@@ -337,6 +433,8 @@ public class MainViewModel : INotifyPropertyChanged
             ShowRenderSection = state.ShowRenderSection;
             RenderedVideoPath = state.RenderedVideoPath;
             SelectedResolutionIndex = state.SelectedResolutionIndex;
+            SelectedSubtitleModeIndex = state.SelectedSubtitleModeIndex;
+            CurrentStep = state.CurrentStep;
 
             // Load images
             ImageItems.Clear();
@@ -1447,20 +1545,26 @@ public class MainViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// Parse transcript text into paragraphs for image generation.
+    /// Prioritizes VoiceoverText (translated/edited) over TranscriptText (original).
     /// </summary>
     private List<string> ParseTranscriptParagraphs()
     {
-        if (string.IsNullOrWhiteSpace(TranscriptText))
+        // Use VoiceoverText (translated/edited) if available, otherwise fall back to TranscriptText
+        var sourceText = !string.IsNullOrWhiteSpace(VoiceoverText)
+            ? VoiceoverText
+            : TranscriptText;
+
+        if (string.IsNullOrWhiteSpace(sourceText))
             return new List<string>();
 
         // Split by double newline (paragraph breaks)
-        var paragraphs = TranscriptText
+        var paragraphs = sourceText
             .Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Trim())
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .ToList();
 
-        // Remove timestamps like [MM:SS] from each paragraph for prompt generation
+        // Remove timestamps like [MM:SS] from each paragraph
         for (int i = 0; i < paragraphs.Count; i++)
         {
             paragraphs[i] = System.Text.RegularExpressions.Regex.Replace(
@@ -1785,6 +1889,378 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     // ═══════════════════════════════════════════════════
+    //  VIDEO PREVIEW & EDIT (before render)
+    // ═══════════════════════════════════════════════════
+
+    private CancellationTokenSource? _previewPlayCts;
+    private Process? _previewAudioProcess;
+
+    // ── Subtitle Style ──
+    private SubtitleStyle _subtitleStyle = new();
+    public SubtitleStyle SubtitleStyleSettings
+    {
+        get => _subtitleStyle;
+        set
+        {
+            if (_subtitleStyle != null)
+                _subtitleStyle.PropertyChanged -= OnSubtitleStyleChanged;
+            _subtitleStyle = value;
+            if (_subtitleStyle != null)
+                _subtitleStyle.PropertyChanged += OnSubtitleStyleChanged;
+            OnPropertyChanged();
+        }
+    }
+
+    private void OnSubtitleStyleChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        RefreshPreviewFrame();
+        AutoSave();
+    }
+
+    public void InitSubtitleStyleEvents()
+    {
+        _subtitleStyle.PropertyChanged += OnSubtitleStyleChanged;
+    }
+
+    // ── Preview Frame (composite: image + subtitle burnt on) ──
+    private Bitmap? _previewFrameBitmap;
+    public Bitmap? PreviewFrameBitmap
+    {
+        get => _previewFrameBitmap;
+        set { _previewFrameBitmap = value; OnPropertyChanged(); }
+    }
+
+    private int _previewCurrentIndex;
+    public int PreviewCurrentIndex
+    {
+        get => _previewCurrentIndex;
+        set
+        {
+            if (ImageItems.Count == 0) return;
+            _previewCurrentIndex = Math.Clamp(value, 0, ImageItems.Count - 1);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PreviewDurationText));
+            OnPropertyChanged(nameof(PreviewPositionText));
+            OnPropertyChanged(nameof(CanPreviewPrev));
+            OnPropertyChanged(nameof(CanPreviewNext));
+            UpdatePreviewSubtitle();
+        }
+    }
+
+    private string _previewSubtitleText = string.Empty;
+    public string PreviewSubtitleText
+    {
+        get => _previewSubtitleText;
+        set
+        {
+            _previewSubtitleText = value;
+            OnPropertyChanged();
+            RefreshPreviewFrame();
+        }
+    }
+
+    private void RefreshPreviewFrame()
+    {
+        if (ImageItems.Count == 0 || _previewCurrentIndex >= ImageItems.Count)
+        {
+            PreviewFrameBitmap = null;
+            return;
+        }
+
+        var item = ImageItems[_previewCurrentIndex];
+        if (string.IsNullOrEmpty(item.ImagePath) || !File.Exists(item.ImagePath))
+        {
+            PreviewFrameBitmap = item.ImageBitmap;
+            return;
+        }
+
+        try
+        {
+            using var skBitmap = SubtitleRenderer.GeneratePreviewFrame(
+                item.ImagePath, _previewSubtitleText, 960, 540, _subtitleStyle);
+
+            if (skBitmap != null)
+            {
+                using var data = skBitmap.Encode(SkiaSharp.SKEncodedImageFormat.Png, 90);
+                using var ms = new MemoryStream();
+                data.SaveTo(ms);
+                ms.Position = 0;
+                PreviewFrameBitmap = new Bitmap(ms);
+            }
+        }
+        catch
+        {
+            PreviewFrameBitmap = item.ImageBitmap;
+        }
+    }
+
+    public string PreviewDurationText
+    {
+        get
+        {
+            if (VoiceoverChunkDurations.Count > _previewCurrentIndex)
+                return $"{VoiceoverChunkDurations[_previewCurrentIndex]:F1}s";
+            return "—";
+        }
+    }
+
+    public string PreviewPositionText =>
+        ImageItems.Count > 0
+            ? $"{_previewCurrentIndex + 1} / {ImageItems.Count}"
+            : "0 / 0";
+
+    // ── Timeline ──
+    private double _previewTimelineProgress;
+    public double PreviewTimelineProgress
+    {
+        get => _previewTimelineProgress;
+        set { _previewTimelineProgress = value; OnPropertyChanged(); }
+    }
+
+    private string _previewTimeText = "00:00 / 00:00";
+    public string PreviewTimeText
+    {
+        get => _previewTimeText;
+        set { _previewTimeText = value; OnPropertyChanged(); }
+    }
+
+    public bool CanPreviewPrev => _previewCurrentIndex > 0;
+    public bool CanPreviewNext => _previewCurrentIndex < ImageItems.Count - 1;
+    public bool HasPreviewContent => AllImagesReady && ImageItems.Count > 0;
+
+    private bool _isPreviewPlaying;
+    public bool IsPreviewPlaying
+    {
+        get => _isPreviewPlaying;
+        set { _isPreviewPlaying = value; OnPropertyChanged(); }
+    }
+
+    // ── Subtitle Display Mode ──
+
+    private int _selectedSubtitleModeIndex;
+    public int SelectedSubtitleModeIndex
+    {
+        get => _selectedSubtitleModeIndex;
+        set
+        {
+            _selectedSubtitleModeIndex = value;
+            OnPropertyChanged();
+            UpdatePreviewSubtitle();
+            AutoSave();
+        }
+    }
+
+    public SubtitleDisplayMode SelectedSubtitleMode => SelectedSubtitleModeIndex switch
+    {
+        0 => SubtitleDisplayMode.FullText,
+        1 => SubtitleDisplayMode.SentenceBySentence,
+        2 => SubtitleDisplayMode.ShortLines,
+        3 => SubtitleDisplayMode.WordByWord,
+        _ => SubtitleDisplayMode.FullText
+    };
+
+    // ── Preset Color Setters ──
+    public void SetFontColor(string hex) { _subtitleStyle.FontColor = hex; }
+    public void SetOutlineColor(string hex) { _subtitleStyle.OutlineColor = hex; }
+
+    private void UpdatePreviewSubtitle()
+    {
+        if (ImageItems.Count == 0 || _previewCurrentIndex >= ImageItems.Count)
+        {
+            PreviewSubtitleText = string.Empty;
+            return;
+        }
+
+        var fullText = ImageItems[_previewCurrentIndex].ParagraphText;
+        if (SelectedSubtitleMode == SubtitleDisplayMode.FullText)
+            PreviewSubtitleText = fullText;
+        else
+        {
+            var chunks = SubtitleTextSplitter.SplitText(fullText, SelectedSubtitleMode);
+            PreviewSubtitleText = chunks.FirstOrDefault() ?? fullText;
+        }
+    }
+
+    public void PreviewGoTo(int index) => PreviewCurrentIndex = index;
+    public void PreviewNext() { if (CanPreviewNext) PreviewCurrentIndex++; }
+    public void PreviewPrev() { if (CanPreviewPrev) PreviewCurrentIndex--; }
+
+    public void StartPreviewSlideshow()
+    {
+        if (ImageItems.Count == 0 || !AllImagesReady) return;
+        StopPreviewSlideshow();
+
+        IsPreviewPlaying = true;
+        PreviewCurrentIndex = 0;
+        PreviewTimelineProgress = 0;
+        _previewPlayCts = new CancellationTokenSource();
+        var ct = _previewPlayCts.Token;
+
+        StartPreviewAudio();
+
+        var totalDuration = VoiceoverChunkDurations.Count > 0
+            ? VoiceoverChunkDurations.Sum() : ImageItems.Count * 3.0;
+        var totalFormatted = FormatPreviewTime(totalDuration);
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                double elapsed = 0;
+
+                for (int i = 0; i < ImageItems.Count; i++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    Dispatcher.UIThread.Post(() => PreviewCurrentIndex = i);
+
+                    var duration = (VoiceoverChunkDurations.Count > i)
+                        ? VoiceoverChunkDurations[i] : 3.0;
+                    var fullText = ImageItems[i].ParagraphText;
+                    var mode = SelectedSubtitleMode;
+
+                    if (mode == SubtitleDisplayMode.FullText)
+                    {
+                        Dispatcher.UIThread.Post(() => PreviewSubtitleText = fullText);
+                        var totalMs = Math.Max(500, (int)(duration * 1000));
+                        for (int t = 0; t < totalMs; t += 100)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            var ce = elapsed + t / 1000.0;
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                PreviewTimelineProgress = (ce / totalDuration) * 100;
+                                PreviewTimeText = $"{FormatPreviewTime(ce)} / {totalFormatted}";
+                            });
+                            await Task.Delay(100, ct);
+                        }
+                        elapsed += duration;
+                    }
+                    else
+                    {
+                        var chunks = SubtitleTextSplitter.SplitText(fullText, mode);
+                        var chunkDuration = duration / Math.Max(1, chunks.Count);
+
+                        for (int c = 0; c < chunks.Count; c++)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            var chunkText = chunks[c];
+                            Dispatcher.UIThread.Post(() => PreviewSubtitleText = chunkText);
+                            var chunkMs = Math.Max(300, (int)(chunkDuration * 1000));
+                            for (int t = 0; t < chunkMs; t += 100)
+                            {
+                                ct.ThrowIfCancellationRequested();
+                                var ce = elapsed + t / 1000.0;
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    PreviewTimelineProgress = (ce / totalDuration) * 100;
+                                    PreviewTimeText = $"{FormatPreviewTime(ce)} / {totalFormatted}";
+                                });
+                                await Task.Delay(100, ct);
+                            }
+                            elapsed += chunkDuration;
+                        }
+                    }
+                }
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    PreviewTimelineProgress = 100;
+                    PreviewTimeText = $"{totalFormatted} / {totalFormatted}";
+                });
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    IsPreviewPlaying = false;
+                    StopPreviewAudio();
+                });
+            }
+        });
+    }
+
+    private static string FormatPreviewTime(double seconds)
+    {
+        var ts = TimeSpan.FromSeconds(Math.Max(0, seconds));
+        return $"{(int)ts.TotalMinutes:D2}:{ts.Seconds:D2}";
+    }
+
+    public void StopPreviewSlideshow()
+    {
+        _previewPlayCts?.Cancel();
+        _previewPlayCts?.Dispose();
+        _previewPlayCts = null;
+        IsPreviewPlaying = false;
+        StopPreviewAudio();
+    }
+
+    private void StartPreviewAudio()
+    {
+        StopPreviewAudio();
+        if (!HasVoiceover || string.IsNullOrEmpty(VoiceoverFilePath) || !File.Exists(VoiceoverFilePath))
+            return;
+        try
+        {
+            ProcessStartInfo? psi;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                psi = new ProcessStartInfo { FileName = "afplay", Arguments = $"\"{VoiceoverFilePath}\"", UseShellExecute = false, CreateNoWindow = true };
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                psi = new ProcessStartInfo { FileName = "cmd", Arguments = $"/c start \"\" \"{VoiceoverFilePath}\"", UseShellExecute = false, CreateNoWindow = true };
+            else
+                psi = new ProcessStartInfo { FileName = "xdg-open", Arguments = $"\"{VoiceoverFilePath}\"", UseShellExecute = false, CreateNoWindow = true };
+            _previewAudioProcess = Process.Start(psi);
+        }
+        catch { }
+    }
+
+    private void StopPreviewAudio()
+    {
+        try { if (_previewAudioProcess != null && !_previewAudioProcess.HasExited) _previewAudioProcess.Kill(entireProcessTree: true); } catch { }
+        _previewAudioProcess = null;
+    }
+
+    // ── Segment Reorder ──
+
+    public void MoveSegmentUp(int index)
+    {
+        if (index <= 0 || index >= ImageItems.Count) return;
+        SwapSegments(index, index - 1);
+    }
+
+    public void MoveSegmentDown(int index)
+    {
+        if (index < 0 || index >= ImageItems.Count - 1) return;
+        SwapSegments(index, index + 1);
+    }
+
+    private void SwapSegments(int a, int b)
+    {
+        (ImageItems[a], ImageItems[b]) = (ImageItems[b], ImageItems[a]);
+        ImageItems[a].Index = a;
+        ImageItems[b].Index = b;
+        if (VoiceoverChunkDurations.Count > Math.Max(a, b))
+        {
+            (VoiceoverChunkDurations[a], VoiceoverChunkDurations[b]) =
+                (VoiceoverChunkDurations[b], VoiceoverChunkDurations[a]);
+        }
+        UpdatePreviewSubtitle();
+        OnPropertyChanged(nameof(PreviewDurationText));
+        AutoSave();
+    }
+
+    public void InitializePreview()
+    {
+        if (ImageItems.Count > 0)
+        {
+            PreviewCurrentIndex = 0;
+            OnPropertyChanged(nameof(HasPreviewContent));
+            RefreshPreviewFrame();
+        }
+    }
+
+
+    // ═══════════════════════════════════════════════════
     //  VIDEO RENDER (ffmpeg — 100% offline)
     // ═══════════════════════════════════════════════════
 
@@ -1883,6 +2359,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         ShowRenderSection = true;
         OnPropertyChanged(nameof(CanStartRender));
+        InitializePreview();
     }
 
     /// <summary>
@@ -1971,7 +2448,7 @@ public class MainViewModel : INotifyPropertyChanged
 
             await _videoRenderService.RenderVideoAsync(
                 imagePaths, paragraphTexts, VoiceoverChunkDurations, VoiceoverFilePath,
-                outputPath, w, h, ct);
+                outputPath, w, h, SelectedSubtitleMode, _subtitleStyle, ct);
 
             RenderedVideoPath = outputPath;
 

@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _viewModel = new MainViewModel();
+        _viewModel.InitSubtitleStyleEvents();
         DataContext = _viewModel;
 
         // Set up drag-and-drop
@@ -43,7 +44,39 @@ public partial class MainWindow : Window
     {
         if (sender is Button button && button.DataContext is AutomationContent.Models.ProjectInfo project)
         {
-            _viewModel.DeleteProject(project.Name);
+            _viewModel.RequestDeleteProject(project.Name);
+        }
+    }
+
+    private void OnConfirmDeleteClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.ConfirmDeleteProject();
+    }
+
+    private void OnCancelDeleteClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.CancelDeleteProject();
+    }
+
+    // ═══════════════════════════════════════
+    //  STEP NAVIGATION HANDLERS
+    // ═══════════════════════════════════════
+
+    private void OnNextStepClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.NextStep();
+    }
+
+    private void OnPrevStepClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.PrevStep();
+    }
+
+    private void OnBreadcrumbClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is string stepStr && int.TryParse(stepStr, out var step))
+        {
+            _viewModel.GoToStep(step);
         }
     }
 
@@ -219,6 +252,60 @@ public partial class MainWindow : Window
         if (sender is Avalonia.Controls.Button button && button.DataContext is AutomationContent.Models.ImageGenerationItem item)
         {
             await _viewModel.RegenerateImageAsync(item);
+        }
+    }
+
+    // ═══════════════════════════════════════
+    //  VIDEO PREVIEW HANDLERS
+    // ═══════════════════════════════════════
+
+    private void OnFontColorClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string hex)
+            _viewModel.SetFontColor(hex);
+    }
+
+    private void OnOutlineColorClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string hex)
+            _viewModel.SetOutlineColor(hex);
+    }
+
+    private void OnPreviewPrevClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.PreviewPrev();
+    }
+
+    private void OnPreviewNextClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.PreviewNext();
+    }
+
+    private void OnPreviewPlayClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.StartPreviewSlideshow();
+    }
+
+    private void OnPreviewStopClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.StopPreviewSlideshow();
+    }
+
+    private void OnMoveSegmentUpClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag != null)
+        {
+            int index = button.Tag is int i ? i : (int.TryParse(button.Tag.ToString(), out var parsed) ? parsed : -1);
+            if (index >= 0) _viewModel.MoveSegmentUp(index);
+        }
+    }
+
+    private void OnMoveSegmentDownClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag != null)
+        {
+            int index = button.Tag is int i ? i : (int.TryParse(button.Tag.ToString(), out var parsed) ? parsed : -1);
+            if (index >= 0) _viewModel.MoveSegmentDown(index);
         }
     }
 
